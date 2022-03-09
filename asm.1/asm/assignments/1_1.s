@@ -20,8 +20,8 @@
 assignment_1_1:
 
     # Assignment code.
-    sub a0, a1, a0
-    sltiu a0, a0, 0
+    sub a0, a0, a1
+    sltu a0, zero, a0
     xori a0, a0, 1
     # -- End of assignment code.
 
