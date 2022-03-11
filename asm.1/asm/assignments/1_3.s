@@ -18,7 +18,9 @@
 assignment_1_3:
 
     # Assignment code.
-
+    lui a0, 0x5d6e5
+    addi a0, a0, 0x58f
+    slli a0, a0, 1
     # -- End of assignment code.
 
     jr ra # Return to the testing framework. Don't modify.

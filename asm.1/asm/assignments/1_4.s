@@ -20,7 +20,9 @@
 assignment_1_4:
 
     # Assignment code.
-
+    lui a1, 0xf0000
+    srai a1, a1, 31
+    xor a0, a0, a1
     # -- End of assignment code.
 
     jr ra # Return to the testing framework. Don't modify.

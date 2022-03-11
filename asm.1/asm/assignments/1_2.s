@@ -20,7 +20,8 @@
 assignment_1_2:
 
     # Assignment code.
-
+    srli a0, a0, 31
+    andi a0, a0, 1
     # -- End of assignment code.
 
     jr ra # Return to the testing framework. Don't modify.
