@@ -22,7 +22,10 @@
 assignment_1_5:
 
     # Assignment code.
-
+    lui t0, 0x80000
+    add a0, a0, t0
+    addi a0, a0, -1
+    sra a0, a0, a0
     # -- End of assignment code.
 
     jr ra # Return to the testing framework. Don't modify.
