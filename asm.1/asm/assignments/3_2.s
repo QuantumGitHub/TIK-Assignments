@@ -22,7 +22,15 @@
 assignment_3_2:
 
     # Assignment code.
+    addi t0, zero, -1 #counter variable, it is -1 because the first time j1 is entered it is incremented
 
+j1:
+    addi t0, t0, 1 #increment t0
+    lw t1, 0(a0) #load the value from address a0 to t1
+    addi a0, a0, 4 #the address has to be pointing to the next table slot, which is 4 enumeration further in the memory
+    bne t1, zero, j1 #branch if the value of the current address is not equal to zero
+
+    add a0, t0, zero #save the value of the counter to a0
     # -- End of assignment code.
 
     jr ra # Return to the testing framework. Don't modify.
