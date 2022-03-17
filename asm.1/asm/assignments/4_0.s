@@ -22,7 +22,12 @@
 assignment_4_0:
 
     # Assignment code.
-
+    addi sp, sp, -8
+    sw ra, 0(sp)
+    jalr ra, 0(a0)
+    lw ra, 0(sp)
+    addi sp, sp, 8
+    jalr zero, ra
     # -- End of assignment code.
 
     jr ra # Return to the testing framework. Don't modify.
