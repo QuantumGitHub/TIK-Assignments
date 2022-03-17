@@ -18,7 +18,9 @@
 assignment_3_0:
 
     # Assignment code.
-
+    lw t0, 0(a0)
+    addi t0, t0, 1
+    sw t0, 0(a0)
     # -- End of assignment code.
 
     jr ra # Return to the testing framework. Don't modify.

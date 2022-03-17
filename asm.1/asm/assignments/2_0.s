@@ -19,7 +19,12 @@
 assignment_2_0:
 
     # Assignment code.
-
+    add t0, a1, zero
+    beq a0, zero, j1
+    add t0, zero, zero
+    add t0, a2, zero
+j1:
+    add a0, t0, zero
     # -- End of assignment code.
-
+    
     jr ra # Return to the testing framework. Don't modify.

@@ -19,7 +19,23 @@
 assignment_2_1:
 
     # Assignment code.
+    addi t1, zero, 1
+    add t0, zero, zero
+    #special cases
+    beq a0, zero, L3
+    beq a0, t1, L3
 
+    addi a0, a0, -1
+fi:
+    add t2, t1, zero
+    add t1, t1, t0
+    add t0, t2, zero
+    
+    addi a0, a0, -1
+    bne a0, zero, fi #if not, jump to fi:
+
+    add a0, t1, zero
+L3:
     # -- End of assignment code.
 
     jr ra # Return to the testing framework. Don't modify.

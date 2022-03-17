@@ -22,7 +22,14 @@
 assignment_1_7:
 
     # Assignment code.
+    addi a0, a0, -1
 
+    and a1, a0, a1
+
+    xori t0, a0, -1
+    and a2, t0, a2
+
+    or a0, a1, a2
     # -- End of assignment code.
 
     jr ra # Return to the testing framework. Don't modify.
