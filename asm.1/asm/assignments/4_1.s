@@ -27,7 +27,22 @@
 assignment_4_1:
 
     # Assignment code.
+    add t0, a0, zero #saving address to f
 
+    bne a1, zero, j1 #if a1 is not zero, branch
+    add a0, zero, zero #load the output with the value 0
+    beq zero, zero, exit #jump to exit
+
+j1:
+    addi a0, a1, -1
+
+    addi sp, sp, -8
+    sw ra, 0(sp)
+    jalr ra, 0(t0)
+    lw ra, 0(sp)
+    addi sp, sp, 8
+    jalr zero, ra
+exit:
     # -- End of assignment code.
 
     jr ra # Return to the testing framework. Don't modify.
