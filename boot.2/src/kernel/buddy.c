@@ -36,6 +36,7 @@
  * order of block. Use __ppn2block and block2__ppn
  */
 /* #define block2buddy(block, order) */
+#define block2buddy(block, order) (__ppn2block(block2__ppn(block)^(1UL << order)))
 
 #define is_list_empty(order) (!(uintptr_t)buddy_free_lists[order])
 #define is_block_free(block) (!(block->refcnt))
@@ -73,6 +74,10 @@ static struct block *buddy_pop(unsigned order)
 	struct block *block = buddy_free_lists[order];
 
 	/* TODO: What should happen here? */
+	// take the first element of the order's list and save it into block,
+	// then make the next element the new first one
+	
+	buddy_free_lists[order] = buddy_free_lists[order]->next;
 
 	return block;
 }
@@ -81,24 +86,28 @@ static struct block *buddy_remove(struct block *block, unsigned order)
 {
 	if (is_list_empty(order)) return NULL;
 
-	if (buddy_free_lists[order] != block) {
-		struct block *head = buddy_free_lists[order];
-		struct block *tail = head;
-		struct block *prev = NULL;
-
-		while (tail->next) {
-			if (tail->next == block) prev = tail;
+	if (buddy_free_lists[order] != block) { //if block not in list create:
+		struct block *head = buddy_free_lists[order]; // a head pointer pointing on the element of buddy list of order
+		struct block *tail = head;				// the tail of the block, currently pointing on the head
+		struct block *prev = NULL;				// prev???
+												// __________________________
+												// |						|
+												// | head					| tail
+												// |						|
+												// __________________________
+		while (tail->next) { //as long as tail points to a next block
+			if (tail->next == block) prev = tail; //if the tail points to our block from the argument, set prev = tail
 			tail = tail->next;
-		}
+		} // will terminate if next is NULL, means we have got to the end of the current block orders block
 
 		if (!prev) return NULL; /* Could not find block */
 
-		buddy_free_lists[order] = block;
-		prev->next = NULL;
-		tail->next = head;
+		buddy_free_lists[order] = block; // set the freed block as the first element of the buddy list of order
+		prev->next = NULL; // why???
+		tail->next = head; // set the tail->next to the heads value???
 	}
 
-	return buddy_pop(order);
+	return buddy_pop(order); // buddy_pop entfernt das erste element aus dem buddy_free_lists[order]
 }
 
 static void buddy_push(struct block *block, unsigned order)
@@ -147,6 +156,38 @@ static struct block *__buddy_merge(struct block *block, struct block *buddy)
 	 * blocks will become "the larger one". Make use of buddy_remove and
 	 * buddy_pop. Return the merged block
 	 */
+
+	struct block *first; //important to use pointers
+	struct block *second;
+
+	//wenn wir am rand hinten sind
+	if(block->next == NULL || buddy->next == NULL){ //entscheiden welcher block im speicher früher kommt
+		if(block->next == NULL) {
+			first = buddy;
+			second = block;
+		}
+		else if(buddy->next == NULL){
+			first = block; 
+			second = buddy;
+		}
+	}
+	else{
+		//wenn wir irgendwo im speicher sind
+		if(block->next < buddy->next){
+			first = block;
+			second = buddy;
+		}
+		else if(block->next > buddy->next){
+			first = buddy;
+			second = block;
+		}
+	}
+
+	first->next = second->next;
+	buddy_remove(second, second->order);
+	first->order++;
+
+	return first;
 }
 
 
