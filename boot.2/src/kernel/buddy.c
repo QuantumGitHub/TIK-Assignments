@@ -78,6 +78,8 @@ static struct block *buddy_pop(unsigned order)
 	// then make the next element the new first one
 	
 	buddy_free_lists[order] = buddy_free_lists[order]->next;
+	block->next = NULL;
+	block->refcnt++;
 
 	return block;
 }
@@ -116,6 +118,10 @@ static void buddy_push(struct block *block, unsigned order)
 	 * TODO: what should happen here? Hint: at least 2 lines. Hint: insert
 	 * the block in front of the linked list it belongs to
 	 */
+	block->next = buddy_free_lists[order];
+	block->next->refcnt -= 1;
+
+	buddy_free_lists[order] = block;
 }
 
 static int __buddy_find_smallest_free_order(unsigned order)
@@ -135,6 +141,11 @@ static int __buddy_split(unsigned order)
 	if (!block) return -2;
 
 	/* TODO: implement the actual splitting here */
+
+	block->next = block2buddy(block, order-1);
+
+	block_push(block->next, order-1);
+	block_push(block, order-1);
 
 	return 0;
 }
@@ -183,9 +194,9 @@ static struct block *__buddy_merge(struct block *block, struct block *buddy)
 		}
 	}
 
-	first->next = second->next;
-	buddy_remove(second, second->order);
-	first->order++;
+	first->next = second->next; // zweiten block next pointer zum ersten block next pointer machen
+	buddy_remove(second, second->order); // zweiten block daten löschen
+	first->order++; //order + 1 of first block, as it is now twice as big
 
 	return first;
 }
