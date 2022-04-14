@@ -167,7 +167,6 @@ static struct block *__buddy_merge(struct block *block, struct block *buddy)
 	 * blocks will become "the larger one". Make use of buddy_remove and
 	 * buddy_pop. Return the merged block
 	 */
-
 	struct block *merged; //important to use pointers
 	//wenn wir am rand hinten sind
 	if(block->next == NULL || buddy->next == NULL){ //entscheiden welcher block im speicher früher kommt
@@ -178,7 +177,8 @@ static struct block *__buddy_merge(struct block *block, struct block *buddy)
 		if(block < buddy) merged = block; // second = buddy;
 		else if(block > buddy) merged = buddy; // second = block;
 	}
-	buddy_push(merged, block->order+1) // der neue grössere block in die höhere order buddy_free_lists gepushd werden
+	merged->order++;
+	buddy_push(merged, merged->order) // der neue grössere block in die höhere order buddy_free_lists gepushd werden
 	//sollte aber mit buddy_push gemacht werden
 	//first->order++; //order + 1 of first block, as it is now twice as big
 	// obsolete if using buddy_push, because order is already taken care of
@@ -214,9 +214,13 @@ int buddy_free(struct block *block)
 		 * also use __buddy_try_merge after you've implemented
 		 * __buddy_merge
 		 */
+		 // merge already returns the correct merged block with right order
+			struct block *temp = __buddy_try_merge(block);
+			buddy_push(temp, temp->order);
 		return 0;
 	default:
 		/* TODO: and here? */
+		block->refcnt--;
 		return 0;
 	}
 
@@ -230,13 +234,16 @@ struct block *buddy_alloc(unsigned order)
 	if (order > BUDDY_MAX_ORDER) return NULL;
 
 	/* TODO: call __buddy_find_smallest_free_order here */
+	int i = __buddy_find_smallest_free_order(order);
 
 	/*
 	 * TODO: think about what __buddy_find_smallest_free_order might
 	 * return and what should happen in each case (return early upon a
 	 * failure)
 	 */
-
+	if(i == -1) return NULL;
+		// take all other possible values of i into account
+		
 	return buddy_pop(order);
 }
 
