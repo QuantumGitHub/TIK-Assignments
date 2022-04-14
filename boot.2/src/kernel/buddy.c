@@ -168,37 +168,24 @@ static struct block *__buddy_merge(struct block *block, struct block *buddy)
 	 * buddy_pop. Return the merged block
 	 */
 
-	struct block *first; //important to use pointers
-	struct block *second;
-
+	struct block *merged; //important to use pointers
 	//wenn wir am rand hinten sind
 	if(block->next == NULL || buddy->next == NULL){ //entscheiden welcher block im speicher früher kommt
-		if(block->next == NULL) {
-			first = buddy;
-			second = block;
-		}
-		else if(buddy->next == NULL){
-			first = block; 
-			second = buddy;
-		}
+		if(block->next == NULL) merged = buddy; // second = block;
+		else if(buddy->next == NULL) merged = block; // second = buddy;
 	}
-	else{
-		//wenn wir irgendwo im speicher sind
-		if(block->next < buddy->next){
-			first = block;
-			second = buddy;
-		}
-		else if(block->next > buddy->next){
-			first = buddy;
-			second = block;
-		}
+	else{	// wenn wir irgendwo im speicher sind
+		if(block < buddy) merged = block; // second = buddy;
+		else if(block > buddy) merged = buddy; // second = block;
 	}
-
-	first->next = second->next; // zweiten block next pointer zum ersten block next pointer machen
-	buddy_remove(second, second->order); // zweiten block daten löschen
-	first->order++; //order + 1 of first block, as it is now twice as big
-
-	return first;
+	buddy_push(merged, block->order+1) // der neue grössere block in die höhere order buddy_free_lists gepushd werden
+	//sollte aber mit buddy_push gemacht werden
+	//first->order++; //order + 1 of first block, as it is now twice as big
+	// obsolete if using buddy_push, because order is already taken care of
+	buddy_remove(block, block->order);
+	buddy_remove(buddy, buddy->order);
+	// beide block und buddy aus der linked list löschen
+	return merged;
 }
 
 
