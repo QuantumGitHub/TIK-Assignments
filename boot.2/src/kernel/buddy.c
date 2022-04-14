@@ -234,16 +234,16 @@ struct block *buddy_alloc(unsigned order)
 	if (order > BUDDY_MAX_ORDER) return NULL;
 
 	/* TODO: call __buddy_find_smallest_free_order here */
-	int i = __buddy_find_smallest_free_order(order);
+	int smallest_free_order = __buddy_find_smallest_free_order(order);
 
 	/*
 	 * TODO: think about what __buddy_find_smallest_free_order might
 	 * return and what should happen in each case (return early upon a
 	 * failure)
 	 */
-	if(i == -1) return NULL;
+	if(smallest_free_order == -1) return NULL;
 		// take all other possible values of i into account
-		
+	buddy_split(smallest_free_order, order);
 	return buddy_pop(order);
 }
 
