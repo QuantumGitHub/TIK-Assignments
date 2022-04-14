@@ -77,9 +77,9 @@ static struct block *buddy_pop(unsigned order)
 	// take the first element of the order's list and save it into block,
 	// then make the next element the new first one
 	
-	buddy_free_lists[order] = buddy_free_lists[order]->next;
+	block->refcnt = 1;
+	buddy_free_lists[order] = block->next;
 	block->next = NULL;
-	block->refcnt++;
 
 	return block;
 }
@@ -118,8 +118,8 @@ static void buddy_push(struct block *block, unsigned order)
 	 * TODO: what should happen here? Hint: at least 2 lines. Hint: insert
 	 * the block in front of the linked list it belongs to
 	 */
+	block->refcnt = 0;
 	block->next = buddy_free_lists[order];
-	block->next->refcnt -= 1;
 
 	buddy_free_lists[order] = block;
 }
@@ -141,11 +141,11 @@ static int __buddy_split(unsigned order)
 	if (!block) return -2;
 
 	/* TODO: implement the actual splitting here */
+	block->order--;
+	struct block *buddy = block2buddy(block, block->order);
 
-	block->next = block2buddy(block, order-1);
-
-	buddy_push(block->next, order-1);
 	buddy_push(block, order-1);
+	buddy_push(buddy, order-1);
 
 	return 0;
 }
@@ -167,7 +167,7 @@ static struct block *__buddy_merge(struct block *block, struct block *buddy)
 	 * blocks will become "the larger one". Make use of buddy_remove and
 	 * buddy_pop. Return the merged block
 	 */
-	struct block *merged; //important to use pointers
+	/*struct block *merged; //important to use pointers
 	//wenn wir am rand hinten sind
 	if(block->next == NULL || buddy->next == NULL){ //entscheiden welcher block im speicher früher kommt
 		if(block->next == NULL) merged = buddy; // second = block;
@@ -185,7 +185,27 @@ static struct block *__buddy_merge(struct block *block, struct block *buddy)
 	buddy_remove(block, block->order);
 	buddy_remove(buddy, buddy->order);
 	// beide block und buddy aus der linked list löschen
-	return merged;
+	return merged;*/
+
+	//struct block *merged;
+	//unsigned order_buddy = buddy->order++;
+	//unsigned order_block = block->order++;
+
+	buddy_remove(block, block->order);
+	buddy_remove(buddy, buddy->order);
+
+	if(block->next == buddy){
+		block->order++;
+		unsigned order_block = block->order;
+		buddy_push(block, order_block);
+		return block;
+	}
+	else{
+		buddy->order++;
+		unsigned order_buddy = buddy->order;
+		buddy_push(buddy, order_buddy);
+		return buddy;
+	}
 }
 
 
@@ -215,8 +235,9 @@ int buddy_free(struct block *block)
 		 * __buddy_merge
 		 */
 		 // merge already returns the correct merged block with right order
-			__buddy_try_merge(block); // if success the block has all characteristics of a higher order block
-			buddy_push(block, block->order);
+		buddy_push(block, block->order);
+		__buddy_try_merge(block); // if success the block has all characteristics of a higher order block
+		block->refcnt = 0;
 		return 0;
 	default:
 		/* TODO: and here? */
@@ -243,7 +264,7 @@ struct block *buddy_alloc(unsigned order)
 	 */
 	if(smallest_free_order == -1) return NULL;
 		// take all other possible values of i into account
-	buddy_split(smallest_free_order, order);
+	if(buddy_split(smallest_free_order, order)) return NULL;
 	return buddy_pop(order);
 }
 
