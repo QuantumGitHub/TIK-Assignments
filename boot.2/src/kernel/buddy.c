@@ -144,8 +144,8 @@ static int __buddy_split(unsigned order)
 
 	block->next = block2buddy(block, order-1);
 
-	block_push(block->next, order-1);
-	block_push(block, order-1);
+	buddy_push(block->next, order-1);
+	buddy_push(block, order-1);
 
 	return 0;
 }
@@ -178,7 +178,7 @@ static struct block *__buddy_merge(struct block *block, struct block *buddy)
 		else if(block > buddy) merged = buddy; // second = block;
 	}
 	merged->order++;
-	buddy_push(merged, merged->order) // der neue grössere block in die höhere order buddy_free_lists gepushd werden
+	buddy_push(merged, merged->order); // der neue grössere block in die höhere order buddy_free_lists gepushd werden
 	//sollte aber mit buddy_push gemacht werden
 	//first->order++; //order + 1 of first block, as it is now twice as big
 	// obsolete if using buddy_push, because order is already taken care of
@@ -215,8 +215,8 @@ int buddy_free(struct block *block)
 		 * __buddy_merge
 		 */
 		 // merge already returns the correct merged block with right order
-			struct block *temp = __buddy_try_merge(block);
-			buddy_push(temp, temp->order);
+			__buddy_try_merge(block); // if success the block has all characteristics of a higher order block
+			buddy_push(block, block->order);
 		return 0;
 	default:
 		/* TODO: and here? */
