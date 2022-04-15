@@ -191,19 +191,21 @@ static struct block *__buddy_merge(struct block *block, struct block *buddy)
 	//unsigned order_buddy = buddy->order++;
 	//unsigned order_block = block->order++;
 
+	unsigned order;
+
 	buddy_remove(block, block->order);
 	buddy_remove(buddy, buddy->order);
 
 	if(block->next == buddy){
 		block->order++;
-		unsigned order_block = block->order;
-		buddy_push(block, order_block);
+		order = block->order;
+		buddy_push(block, order);
 		return block;
 	}
 	else{
 		buddy->order++;
-		unsigned order_buddy = buddy->order;
-		buddy_push(buddy, order_buddy);
+		order = buddy->order;
+		buddy_push(buddy, order);
 		return buddy;
 	}
 }
