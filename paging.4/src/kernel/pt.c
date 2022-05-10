@@ -175,6 +175,9 @@ static void __pt_page_pte_set_perm(struct page *page, uintptr_t flags)
 	 * permissions for the PTE. Just update page->pte, nothing else, no
 	 * return value
 	 */
+	if(flags && 0x1UL > 0) //set read bit to 1
+	if(flags && 0x2UL > 0) //set write bit to 1
+	if(flags && 0x4UL > 0) //set exec bit to 1
 }
 
 /*
@@ -289,6 +292,15 @@ static uintptr_t *__pt_next_pte(size_t depth, uintptr_t vpn, uintptr_t *ptes)
 	 * phys2kvirt, one dereference (don't forget to update @ptes), and a
 	 * return
 	 */
+	
+	uintptr_t next = ppn2phys(pte_get_ppn(ptes[depth]));
+
+	next = phys2kvirt(next + sizeof(uintptr_t)*vpn2vpnlevel(vpn, depth2level(depth+1)));
+
+	ptes[depth+1] = *next;
+
+	return next;
+
 }
 
 /*
@@ -399,7 +411,18 @@ static int pt_set_pte_leaf(uintptr_t *satp, uintptr_t vpn, uintptr_t pte,
 		 * Time to take a step! Use __pt_next_pte here
 		 *
 		 */
+
+		if(pte_is_leaf(ptes[j])) return -error; // if is leaf return error
+
+		if(!pte_is_valid(ptes[j])){ //if invalid, set the validity bit with pt_set_pte_nonleaf
+			pt_set_pte_nonleaf(curr_pte);
+			ptes[j] = *curr_pte;
+		}
+
+		curr_pte = __pt_next_pte(j, vpn, ptes);
 	}
+
+	
 
 	/*
 	 * PTE already mapped and we're trying to overwrite it with something
@@ -411,6 +434,7 @@ static int pt_set_pte_leaf(uintptr_t *satp, uintptr_t vpn, uintptr_t pte,
 	 * TODO: actually update the page table by updating *curr_pte (one
 	 * line). We then flush the TLB and update @ptes (already given).
 	 */
+	*curr_pte = pte;
 	pt_flush_tlb();
 	ptes[depth] = *curr_pte;
 
