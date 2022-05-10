@@ -1,0 +1,8 @@
+*gdb*
+!.gdbinit
+*.o
+*.swp
+jake
+cscope.out
+.syntastic_c_config
+!lib.o
