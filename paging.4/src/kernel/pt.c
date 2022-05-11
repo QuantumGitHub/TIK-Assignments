@@ -61,7 +61,7 @@
 
 #define vpn2prevpageboundary(vpn, level) ((vpn) & (-1L * level2pagen(level)))
 #define vpn2nextpageboundary(vpn, level)                                       \
-	(((vpn) + level2pagen(level) - 1) & (-1L * level2pagen(level)))
+	(((vpn) + level2(level) - 1) & (-1L * level2pagen(level)))
 
 extern struct buddy_layout layout;
 
@@ -175,9 +175,17 @@ static void __pt_page_pte_set_perm(struct page *page, uintptr_t flags)
 	 * permissions for the PTE. Just update page->pte, nothing else, no
 	 * return value
 	 */
-	if(flags && 0x1UL > 0) //set read bit to 1
-	if(flags && 0x2UL > 0) //set write bit to 1
-	if(flags && 0x4UL > 0) //set exec bit to 1
+	uintptr_t new_pte;
+	if(flags & VMA_READ){
+		new_pte = pte_set(page->pte, PTE_READ_SHIFT);
+	} //set read bit to 1
+	if(flags & VMA_WRITE){
+		new_pte = pte_set(page->pte, PTE_WRITE_SHIFT);
+	} //set write bit to 1
+	if(flags & VMA_EXEC){
+		new_pte = pte_set(page->pte, PTE_EXEC_SHIFT);
+	} //set exec bit to 1
+	page->pte=new_pte; //update the pte
 }
 
 /*
@@ -190,13 +198,13 @@ static int __pt_page_needs_pte(struct vma *vma, uintptr_t __ppn,
 	 * 1. TODO: convert VMA flags to PTE permission bits by calling
 	 * __pt_page_pte_set_perm
 	 */
-
+	__pt_page_pte_set_perm(out, vma->flags);
 	/*
 	 * 2. TODO: set the page's PPN field (out->ppn): decide to either use
 	 * @__ppn or (as in the common case) to ask buddy for a PPN. Use
 	 * pt_alloc to interact with buddy
 	 */
-
+	out->ppn = phys2kvirt(pt_alloc(out->level)); errorflag;
 	/*
 	 * 3. Update the PTE's PPN field based on out->ppn and make it valid
 	 */
@@ -240,12 +248,18 @@ static ssize_t pt_vma_new_page_at_vpn(struct vma *vma, uintptr_t vpn,
 	 * (virtual) page should fit inside the VMA, but otherwise should be as
 	 * large as possible. Return 0 if there's no more space left in the VMA
 	 */
+	size_t max_size = vma->vpn + vma->pagen - vpn;
+	
 
+	
+	// vma->vpn + vma->pagen - vpn
 	/*
 	 * TODO: requirement 2: convert pagen to level: our page can only be
 	 * either 4 KiB, 2 MiB, etc.
 	 */
 	ssize_t level; /* TODO: = ... */
+
+	level = pagen2floorlevel(max_size); //gives us level -> 4KiB, 2MiB, 1 GiB, 512 GiB in form of levels
 
 	/*
 	 * TODO: requirement 3: alignment: the VPN must be aligned to the
@@ -254,14 +268,17 @@ static ssize_t pt_vma_new_page_at_vpn(struct vma *vma, uintptr_t vpn,
 	 * Actually, the PPN must also be aligned to the page's level. However,
 	 * buddy will give us this for free (do you see why?)
 	 */
-
+	while(vma->vpn != vpn_align(vpn, level)){
+		level--;
+	}
 	/*
 	 * TODO: requirement 4: available physical memory: buddy must be able
 	 * to give us a contiguous chunk of physical memory that is large
 	 * enough. Call pt_vma_new_page_at_vpn_of_level and decide, based on
 	 * its return value, whether you should decrease the page's level
 	 */
-
+	pt_vma_new_page_at_vpn_of_level(vma, vpn, __ppn, level, out);
+	
 	return level2pagen(level);
 }
 
