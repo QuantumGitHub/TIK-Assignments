@@ -204,7 +204,16 @@ static int __pt_page_needs_pte(struct vma *vma, uintptr_t __ppn,
 	 * @__ppn or (as in the common case) to ask buddy for a PPN. Use
 	 * pt_alloc to interact with buddy
 	 */
-	out->ppn = phys2kvirt(pt_alloc(out->level)); errorflag;
+	if(vma->flags & VMA_IDENTITY && vma->flags & VMA_POPULATE){
+		return -1;
+	}
+	if(!(vma->flags & VMA_IDENTITY)){
+		out->ppn = pt_alloc(out->level);
+		if(!(out->ppn)) return -1;
+	}
+	else{
+		out->ppn = __ppn;
+	}
 	/*
 	 * 3. Update the PTE's PPN field based on out->ppn and make it valid
 	 */
@@ -250,8 +259,6 @@ static ssize_t pt_vma_new_page_at_vpn(struct vma *vma, uintptr_t vpn,
 	 */
 	size_t max_size = vma->vpn + vma->pagen - vpn;
 	
-
-	
 	// vma->vpn + vma->pagen - vpn
 	/*
 	 * TODO: requirement 2: convert pagen to level: our page can only be
@@ -270,6 +277,7 @@ static ssize_t pt_vma_new_page_at_vpn(struct vma *vma, uintptr_t vpn,
 	 */
 	while(vma->vpn != vpn_align(vpn, level)){
 		level--;
+		if(level<0) return -1;
 	}
 	/*
 	 * TODO: requirement 4: available physical memory: buddy must be able
@@ -278,7 +286,7 @@ static ssize_t pt_vma_new_page_at_vpn(struct vma *vma, uintptr_t vpn,
 	 * its return value, whether you should decrease the page's level
 	 */
 	pt_vma_new_page_at_vpn_of_level(vma, vpn, __ppn, level, out);
-	
+
 	return level2pagen(level);
 }
 
@@ -310,7 +318,7 @@ static uintptr_t *__pt_next_pte(size_t depth, uintptr_t vpn, uintptr_t *ptes)
 	 * return
 	 */
 	
-	uintptr_t next = ppn2phys(pte_get_ppn(ptes[depth]));
+	uintptr_t *next = ppn2phys(pte_get_ppn(ptes[depth]));
 
 	next = phys2kvirt(next + sizeof(uintptr_t)*vpn2vpnlevel(vpn, depth2level(depth+1)));
 
@@ -429,10 +437,12 @@ static int pt_set_pte_leaf(uintptr_t *satp, uintptr_t vpn, uintptr_t pte,
 		 *
 		 */
 
-		if(pte_is_leaf(ptes[j])) return -error; // if is leaf return error
+		if(pte_is_leaf(ptes[j])) return -1; // if is leaf return error
 
 		if(!pte_is_valid(ptes[j])){ //if invalid, set the validity bit with pt_set_pte_nonleaf
-			pt_set_pte_nonleaf(curr_pte);
+			if(pt_set_pte_nonleaf(curr_pte) != 0){
+				return -1;
+			}
 			ptes[j] = *curr_pte;
 		}
 
@@ -548,6 +558,14 @@ static ssize_t __pt_vma_new(uintptr_t *satp, uintptr_t vpn, uintptr_t __ppn,
 		 * entire VMA. Don't forget to update @vpn and @__ppn! (The
 		 * latter in case VMA_IDENTITY is set)
 		 */
+
+		// IDEA: 
+		// iterate over remaining pagen
+		// call a function that tries to allocate something
+		// call pt_vma_map_page_at_vpn which does map a new page in the vma at vpn
+		while(out->pagen > 0){
+			out->pagen - pt_vma_map_page_at_vpn(satp, out, vpn, __ppn);
+		}
 	}
 
 	return 0;
