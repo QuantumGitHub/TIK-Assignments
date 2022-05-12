@@ -83,6 +83,7 @@ __attribute__((interrupt("supervisor"))) void scall(void)
 		 * VMA this VPN belongs (one line)
 		 */
 		struct vma *vma; /* TODO: = ... */
+		vma = vpn2vma(kvmas_head, vpn);
 
 		/*
 		 * 1. No VMA? Hard (or major) page fault
@@ -99,6 +100,15 @@ __attribute__((interrupt("supervisor"))) void scall(void)
 			 * functions in pt.c to back the page at @vpn with
 			 * physical memory, goto err_noresources if it fails
 			 */
+			// pt_vma_new_page_at_vpn
+			// pt_vma_map_page_at_vpn
+			// __pt_vma_new		
+			// pt_vma_new		needs all __ppn which is not defined here -> how to get it?
+			
+			//create a __ppn
+			uintptr_t __ppn = 0;
+
+			if(!(pt_vma_map_page_at_vpn(&satp, vma, vpn, __ppn))) goto err_noresources;
 			goto ret;
 		}
 	default:

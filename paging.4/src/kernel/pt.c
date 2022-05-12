@@ -61,7 +61,7 @@
 
 #define vpn2prevpageboundary(vpn, level) ((vpn) & (-1L * level2pagen(level)))
 #define vpn2nextpageboundary(vpn, level)                                       \
-	(((vpn) + level2(level) - 1) & (-1L * level2pagen(level)))
+	(((vpn) + level2pagen(level) - 1) & (-1L * level2pagen(level)))
 
 extern struct buddy_layout layout;
 
@@ -175,15 +175,15 @@ static void __pt_page_pte_set_perm(struct page *page, uintptr_t flags)
 	 * permissions for the PTE. Just update page->pte, nothing else, no
 	 * return value
 	 */
-	uintptr_t new_pte;
+	uintptr_t new_pte = page->pte;
 	if(flags & VMA_READ){
-		new_pte = pte_set(page->pte, PTE_READ_SHIFT);
+		new_pte |= pte_set(page->pte, PTE_READ_SHIFT);
 	} //set read bit to 1
 	if(flags & VMA_WRITE){
-		new_pte = pte_set(page->pte, PTE_WRITE_SHIFT);
+		new_pte |= pte_set(page->pte, PTE_WRITE_SHIFT);
 	} //set write bit to 1
 	if(flags & VMA_EXEC){
-		new_pte = pte_set(page->pte, PTE_EXEC_SHIFT);
+		new_pte |= pte_set(page->pte, PTE_EXEC_SHIFT);
 	} //set exec bit to 1
 	page->pte=new_pte; //update the pte
 }
@@ -205,11 +205,11 @@ static int __pt_page_needs_pte(struct vma *vma, uintptr_t __ppn,
 	 * pt_alloc to interact with buddy
 	 */
 	if(vma->flags & VMA_IDENTITY && vma->flags & VMA_POPULATE){
-		return -1;
+		return -EMAPPED;
 	}
 	if(!(vma->flags & VMA_IDENTITY)){
-		out->ppn = pt_alloc(out->level);
-		if(!(out->ppn)) return -1;
+		out->ppn = phys2ppn(pt_alloc(out->level));
+		if(!(out->ppn)) return -ENORESOURCES;
 	}
 	else{
 		out->ppn = __ppn;
@@ -257,7 +257,9 @@ static ssize_t pt_vma_new_page_at_vpn(struct vma *vma, uintptr_t vpn,
 	 * (virtual) page should fit inside the VMA, but otherwise should be as
 	 * large as possible. Return 0 if there's no more space left in the VMA
 	 */
-	size_t max_size = vma->vpn + vma->pagen - vpn;
+	
+	ssize_t max_size = vma->vpn + vma->pagen - vpn;
+	if(max_size <= 0) return 0;
 	
 	// vma->vpn + vma->pagen - vpn
 	/*
@@ -275,18 +277,21 @@ static ssize_t pt_vma_new_page_at_vpn(struct vma *vma, uintptr_t vpn,
 	 * Actually, the PPN must also be aligned to the page's level. However,
 	 * buddy will give us this for free (do you see why?)
 	 */
-	while(vma->vpn != vpn_align(vpn, level)){
+	while(vpn != vpn_align(vpn, level)){
 		level--;
-		if(level<0) return -1;
 	}
+	
 	/*
 	 * TODO: requirement 4: available physical memory: buddy must be able
 	 * to give us a contiguous chunk of physical memory that is large
 	 * enough. Call pt_vma_new_page_at_vpn_of_level and decide, based on
 	 * its return value, whether you should decrease the page's level
 	 */
-	pt_vma_new_page_at_vpn_of_level(vma, vpn, __ppn, level, out);
-
+	if(pt_vma_new_page_at_vpn_of_level(vma, vpn, __ppn, level, out) != 0){
+		level--;
+		if(level < 0) return -1;
+	}
+	// printstr("todo");
 	return level2pagen(level);
 }
 
@@ -318,12 +323,15 @@ static uintptr_t *__pt_next_pte(size_t depth, uintptr_t vpn, uintptr_t *ptes)
 	 * return
 	 */
 	
-	uintptr_t *next = ppn2phys(pte_get_ppn(ptes[depth]));
+	uintptr_t *next = (void*)ppn2phys(pte_get_ppn(ptes[depth])) + sizeof(uintptr_t)*vpn2vpnlevel(vpn, depth2level(depth+1));
 
-	next = phys2kvirt(next + sizeof(uintptr_t)*vpn2vpnlevel(vpn, depth2level(depth+1)));
+	next = phys2kvirt((uintptr_t)next);
+
+	// printstr("here_1");
 
 	ptes[depth+1] = *next;
 
+	// printstr("here_2");
 	return next;
 
 }
@@ -439,7 +447,7 @@ static int pt_set_pte_leaf(uintptr_t *satp, uintptr_t vpn, uintptr_t pte,
 
 		if(pte_is_leaf(ptes[j])) return -1; // if is leaf return error
 
-		if(!pte_is_valid(ptes[j])){ //if invalid, set the validity bit with pt_set_pte_nonleaf
+		else if(!pte_is_valid(ptes[j])){ //if invalid, set the validity bit with pt_set_pte_nonleaf
 			if(pt_set_pte_nonleaf(curr_pte) != 0){
 				return -1;
 			}
@@ -447,6 +455,7 @@ static int pt_set_pte_leaf(uintptr_t *satp, uintptr_t vpn, uintptr_t pte,
 		}
 
 		curr_pte = __pt_next_pte(j, vpn, ptes);
+		
 	}
 
 	
@@ -456,6 +465,7 @@ static int pt_set_pte_leaf(uintptr_t *satp, uintptr_t vpn, uintptr_t pte,
 	 * else, but note the `&& pte` to make unmapping possible ;)
 	 */
 	if (pte_is_leaf(ptes[depth]) && pte) return -EMAPPED;
+
 
 	/*
 	 * TODO: actually update the page table by updating *curr_pte (one
@@ -530,7 +540,7 @@ ssize_t pt_vma_map_page_at_vpn(uintptr_t *satp, struct vma *vma, uintptr_t vpn,
 	if (!pagen) return 0;
 
 	int ret = __pt_map_page(satp, &page);
-
+	//printstr("todo");
 	if (ret) return ret;
 
 	return pagen;
@@ -542,8 +552,8 @@ ssize_t pt_vma_map_page_at_vpn(uintptr_t *satp, struct vma *vma, uintptr_t vpn,
 static ssize_t __pt_vma_new(uintptr_t *satp, uintptr_t vpn, uintptr_t __ppn,
 			    size_t pagen, uintptr_t flags, struct vma *out)
 {
-	out->vpn = vpn;
-	out->pagen = pagen;
+	out->vpn = vpn; // (out->vpn is the pointer of the start of the vma, should not change!!!)
+	out->pagen = pagen; //(out->pagen) size of the vma, does not change!!!
 	out->flags = flags;
 
 	/* We assume that @out is already on a linked list somewhere */
@@ -563,9 +573,21 @@ static ssize_t __pt_vma_new(uintptr_t *satp, uintptr_t vpn, uintptr_t __ppn,
 		// iterate over remaining pagen
 		// call a function that tries to allocate something
 		// call pt_vma_map_page_at_vpn which does map a new page in the vma at vpn
-		while(out->pagen > 0){
-			out->pagen - pt_vma_map_page_at_vpn(satp, out, vpn, __ppn);
-		}
+		
+		ssize_t pagen;
+		do{
+			// printstr("entered");
+			pagen = pt_vma_map_page_at_vpn(satp, out, vpn, __ppn);
+			// printstr("pagen_got");
+			//if(pagen < 0) return -1; //handle thrown error by the function that returns normally the size of maped area
+
+			//pagen -= size; // reduce the size of the actual empty space inside the vma
+			vpn += pagen; // move the pointer for beginning of block to map in the vma to the beginning of the unmaped space
+			if(flags & VMA_IDENTITY) __ppn += pagen;
+
+			// printf("__pt_vma_new");
+		}while(pagen > 0);
+		// printstr("todo");
 	}
 
 	return 0;
@@ -864,15 +886,15 @@ void pt_flush_tlb(void)
 int pt_init(void)
 {
 	if (ksatp_init()) return -1;
-
+	printstr("test_1");
 	if (pt_init_kvmas_head()) return -1;
-
+	printstr("test_2");
 	if (map_phys_mem_lowhigh()) return -1;
-
+	printstr("test_3");
 	if (map_kstack_lowhigh()) return -1;
-
+	printstr("test_4");
 	if (map_kelf_lowhigh()) return -1;
-
+	printstr("test_5");
 	if (map_io_lowhigh()) return -1;
 
 	printstr("About to turn on the MMU (yikes!), from this point on any memory address will be interpreted as being virtual and trigger a page table walk, I will probably hang and crash silently if you didn't yet implement all the TODOs...\n");
