@@ -327,11 +327,8 @@ static uintptr_t *__pt_next_pte(size_t depth, uintptr_t vpn, uintptr_t *ptes)
 
 	next = phys2kvirt((uintptr_t)next);
 
-	// printstr("here_1");
-
 	ptes[depth+1] = *next;
 
-	// printstr("here_2");
 	return next;
 
 }
@@ -540,7 +537,7 @@ ssize_t pt_vma_map_page_at_vpn(uintptr_t *satp, struct vma *vma, uintptr_t vpn,
 	if (!pagen) return 0;
 
 	int ret = __pt_map_page(satp, &page);
-	//printstr("todo");
+
 	if (ret) return ret;
 
 	return pagen;
@@ -574,20 +571,18 @@ static ssize_t __pt_vma_new(uintptr_t *satp, uintptr_t vpn, uintptr_t __ppn,
 		// call a function that tries to allocate something
 		// call pt_vma_map_page_at_vpn which does map a new page in the vma at vpn
 		
-		ssize_t pagen;
-		do{
+		ssize_t next = 1;
+		while(next > 0){
 			// printstr("entered");
-			pagen = pt_vma_map_page_at_vpn(satp, out, vpn, __ppn);
+			next = pt_vma_map_page_at_vpn(satp, out, vpn, __ppn);
 			// printstr("pagen_got");
-			//if(pagen < 0) return -1; //handle thrown error by the function that returns normally the size of maped area
+			if(next < 0) return -1; //handle thrown error by the function that returns normally the size of maped area
 
 			//pagen -= size; // reduce the size of the actual empty space inside the vma
-			vpn += pagen; // move the pointer for beginning of block to map in the vma to the beginning of the unmaped space
-			if(flags & VMA_IDENTITY) __ppn += pagen;
+			vpn += next; // move the pointer for beginning of block to map in the vma to the beginning of the unmaped space
+			if(flags & VMA_IDENTITY) __ppn += next;
 
-			// printf("__pt_vma_new");
-		}while(pagen > 0);
-		// printstr("todo");
+		}
 	}
 
 	return 0;
@@ -886,15 +881,15 @@ void pt_flush_tlb(void)
 int pt_init(void)
 {
 	if (ksatp_init()) return -1;
-	printstr("test_1");
+	// printstr("test_1");
 	if (pt_init_kvmas_head()) return -1;
-	printstr("test_2");
+	// printstr("test_2");
 	if (map_phys_mem_lowhigh()) return -1;
-	printstr("test_3");
+	// printstr("test_3");
 	if (map_kstack_lowhigh()) return -1;
-	printstr("test_4");
+	// printstr("test_4");
 	if (map_kelf_lowhigh()) return -1;
-	printstr("test_5");
+	// printstr("test_5");
 	if (map_io_lowhigh()) return -1;
 
 	printstr("About to turn on the MMU (yikes!), from this point on any memory address will be interpreted as being virtual and trigger a page table walk, I will probably hang and crash silently if you didn't yet implement all the TODOs...\n");
