@@ -287,7 +287,7 @@ static ssize_t pt_vma_new_page_at_vpn(struct vma *vma, uintptr_t vpn,
 	 * enough. Call pt_vma_new_page_at_vpn_of_level and decide, based on
 	 * its return value, whether you should decrease the page's level
 	 */
-	if(pt_vma_new_page_at_vpn_of_level(vma, vpn, __ppn, level, out) != 0){
+	while(pt_vma_new_page_at_vpn_of_level(vma, vpn, __ppn, level, out) != 0){
 		level--;
 		if(level < 0) return -1;
 	}
