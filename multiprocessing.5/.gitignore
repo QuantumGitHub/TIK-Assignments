@@ -1,0 +1,9 @@
+*gdb*
+!.gdbinit
+*.o
+*.swp
+jake
+cscope.out
+*.app
+.syntastic_c_config
+.vscode
