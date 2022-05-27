@@ -42,6 +42,7 @@ int proc_run_process(char *ptr_elf, uint64_t a3)
 
 	// TODO: parse the elf binary (1 line)
 	// TODO
+	parse_elf(*ptr_elf, &elf);
 
 	char *virt_stack = proc_create_process_vmas(t, &elf);
 	if (virt_stack == NULL) return -1;
@@ -311,6 +312,7 @@ inline char *proc_create_process_vmas(int t, struct elf_jake *elf)
 	* Allocate the root page table using pt_alloc_pt. 
 	*/
 	// TODO
+	root_pt = pt_alloc_pt();
 
 	proc_setup_satp(&process_list[t].satp, root_pt);
 	proc_copy_kernel_pt(process_list[t].satp);
@@ -325,16 +327,24 @@ inline char *proc_create_process_vmas(int t, struct elf_jake *elf)
 	// TODO: the first thing is to initialize the user VMAs linked list
 	// by using pt_init_vmas_head()
 	// TODO
+	pt_init_vmas_head(process_list[t].uvmas);
 
 	// TODO: the VMAs must be allocated (pt_alloc_vma())
 	// TODO
+	text_vma = pt_alloc_vma(process_list[t].uvmas);
+	stack_vma = pt_alloc_vma(process_list[t].uvmas);
 
 	/* TODOs:
 	* After the VMAs are allocated, you can create one for the text and one for the stack, by using pt_vma_new(). 
 	* Be warry of the flags that you should pass!
 	*/
-
+	int MINIMUM_REQUIRED_PAGES = elf->elf.size_load;
 	// TODO
+	uintptr_t flags = VMA_READ | VMA_WRITE | VMA_EXEC | VMA_USER;
+	//text vma
+	pt_vma_new(root_pt, vpn_text, MINIMUM_REQUIRED_PAGES, flags, text_vma);
+	//stack vma
+	pt_vma_new(root_pt, vpn_stack, USER_STACK_BASE_VPN, flags, stack_vma);
 
 	VERIFY_VMAS();
 
@@ -351,6 +361,10 @@ static inline int proc_find_free_process_slot()
 {
 	// TODO: Write in a simple way a loop that finds the first next process to run (max. 10 lines)
 	// TODO
+	for (int t = 0; t < MAX_PROCESSES; t++) {
+		if(process_list[t].status = PROCESS_FREE_SLOT) return t;
+	}
+	return -1;
 }
 
 /* copy_elf_struct
