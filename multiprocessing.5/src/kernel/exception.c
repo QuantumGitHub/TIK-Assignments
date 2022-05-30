@@ -354,6 +354,7 @@ static int handle_text_demand(uintptr_t stval)
 	// "kernel" virtual address. Use get_kvirt() to obtain the kernel virtual address, starting from a user virtual address. After that, use proc_copy_binary().
 
 	// TODO
+	return proc_copy_binary(get_kvirt(process_list[proc_running].satp, stval), process_list[proc_running].elf.ptr_elf+process_list[proc_running].elf.elf.offset_load, (stval - process_list[proc_running].elf.elf.virtual_load)/PAGE_SIZE);
 }
 
 /* mcall
