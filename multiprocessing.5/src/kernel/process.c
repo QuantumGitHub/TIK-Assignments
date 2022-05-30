@@ -324,6 +324,8 @@ inline char *proc_create_process_vmas(int t, struct elf_jake *elf)
 	* Be careful and remember that the virtual address contains more bit then a VPN! The stack VPN should be USER_STACK_BASE_VPN.
 	*/
 
+	vpn_stack = STACK_PAGES;
+	vpn_text = 0;
 	// TODO: the first thing is to initialize the user VMAs linked list
 	// by using pt_init_vmas_head()
 	// TODO
@@ -344,7 +346,7 @@ inline char *proc_create_process_vmas(int t, struct elf_jake *elf)
 	//text vma
 	pt_vma_new(root_pt, vpn_text, MINIMUM_REQUIRED_PAGES, flags, text_vma);
 	//stack vma
-	pt_vma_new(root_pt, vpn_stack, USER_STACK_BASE_VPN, flags, stack_vma);
+	pt_vma_new(root_pt, USER_STACK_BASE_VPN, vpn_stack, flags, stack_vma);
 
 	VERIFY_VMAS();
 
@@ -408,6 +410,7 @@ inline int proc_copy_binary(char *virt_text, struct elf_jake *elf,
 	// Use memcpy() to copy data. There might be a case where less than a page should be copied.
 	// TODO
 
+	memcpy(virt_text, elf->ptr_elf+elf->elf.offset_load+page_index, 1);
 	return 0;
 }
 
