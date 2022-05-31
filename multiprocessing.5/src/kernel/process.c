@@ -219,6 +219,12 @@ inline void proc_scheduler(void)
 	*/
 
 	// TODO
+	for(int p = 0; p++; p < MAX_PROCESSES){
+		if(process_list[p].status == PROCESS_PAUSED){
+			proc_running = p; // index of running process = proc_running
+			p = MAX_PROCESSES;
+		}
+	}
 
 	process_list[proc_running].status = PROCESS_RUNNING;
 	context_switch();
