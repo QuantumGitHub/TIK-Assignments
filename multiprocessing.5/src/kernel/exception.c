@@ -129,6 +129,11 @@ void scall_handler_execv()
 void scall_handler_yield()
 {
 	// TODO
+	if(processes_total > 1){
+		process_list[proc_running].status = PROCESS_PAUSED;
+		proc_copy_frame(&process_list[proc_running].tf, tf_user);
+		proc_scheduler();
+	}
 }
 
 /* TODO
