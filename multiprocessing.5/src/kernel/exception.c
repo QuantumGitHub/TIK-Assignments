@@ -68,6 +68,7 @@ inline int timer_handler()
 inline void scall_handler_print()
 {
 	// TODO
+	put(tf_user->a1);
 }
 
 // Handler for SCALL_END
