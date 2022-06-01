@@ -320,7 +320,6 @@ inline char *proc_create_process_vmas(int t, struct elf_jake *elf)
 	struct vma *text_vma;
 	struct vma *stack_vma;
 	uintptr_t vpn_text, vpn_stack;
-	int text_pages_needed;
 
 	/* TODO:
 	* Allocate the root page table using pt_alloc_pt. 
