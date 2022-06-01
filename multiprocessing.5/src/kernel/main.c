@@ -35,7 +35,7 @@ void main()
 	/* TODO:
 	**  When you are ready, enable the timer interrupt by uncommenting the following line
 	**/
-	// ecall_timer_setup();
+	ecall_timer_setup();
 
 	// FIXME: why doesnt it work if it's used
 	// directly?
