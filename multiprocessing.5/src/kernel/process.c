@@ -42,7 +42,7 @@ int proc_run_process(char *ptr_elf, uint64_t a3)
 
 	// TODO: parse the elf binary (1 line)
 	// TODO
-	parse_elf(*ptr_elf, &elf);
+	parse_elf(ptr_elf, &elf);
 
 	char *virt_stack = proc_create_process_vmas(t, &elf);
 	if (virt_stack == NULL) return -1;
@@ -330,12 +330,12 @@ inline char *proc_create_process_vmas(int t, struct elf_jake *elf)
 	* Be careful and remember that the virtual address contains more bit then a VPN! The stack VPN should be USER_STACK_BASE_VPN.
 	*/
 
-	vpn_stack = STACK_PAGES;
-	vpn_text = 0;
+	vpn_stack = USER_STACK_BASE_VPN;
+	vpn_text = virt2vpn(elf->elf.virtual_load);
 	// TODO: the first thing is to initialize the user VMAs linked list
 	// by using pt_init_vmas_head()
 	// TODO
-	pt_init_vmas_head(process_list[t].uvmas);
+	pt_init_vmas_head(&process_list[t].uvmas);
 
 	// TODO: the VMAs must be allocated (pt_alloc_vma())
 	// TODO
@@ -346,13 +346,14 @@ inline char *proc_create_process_vmas(int t, struct elf_jake *elf)
 	* After the VMAs are allocated, you can create one for the text and one for the stack, by using pt_vma_new(). 
 	* Be warry of the flags that you should pass!
 	*/
-	int MINIMUM_REQUIRED_PAGES = elf->elf.size_load;
+	int MINIMUM_REQUIRED_PAGES = elf->elf.size_load/PAGE_SIZE;
+	if(!(elf->elf.size_load%PAGE_SIZE)) MINIMUM_REQUIRED_PAGES++;
 	// TODO
 	uintptr_t flags = VMA_READ | VMA_WRITE | VMA_EXEC | VMA_USER;
 	//text vma
-	pt_vma_new(root_pt, vpn_text, MINIMUM_REQUIRED_PAGES, flags, text_vma);
+	pt_vma_new(&process_list[t].satp, vpn_text, MINIMUM_REQUIRED_PAGES, flags, text_vma);
 	//stack vma
-	pt_vma_new(root_pt, USER_STACK_BASE_VPN, vpn_stack, flags, stack_vma);
+	pt_vma_new(&process_list[t].satp, vpn_stack, STACK_PAGES, flags, stack_vma);
 
 	VERIFY_VMAS();
 
@@ -370,7 +371,7 @@ static inline int proc_find_free_process_slot()
 	// TODO: Write in a simple way a loop that finds the first next process to run (max. 10 lines)
 	// TODO
 	for (int t = 0; t < MAX_PROCESSES; t++) {
-		if(process_list[t].status = PROCESS_FREE_SLOT) return t;
+		if(process_list[t].status == PROCESS_FREE_SLOT) return t;
 	}
 	return -1;
 }

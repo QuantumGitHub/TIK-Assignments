@@ -186,8 +186,13 @@ uintptr_t get_free_vpn(int t)
 */
 void scall_handler_mmap()
 {
-	// TODO
-	tf_user->a3 = pt_vma_new(tf_user->satp, get_free_vpn(proc_running), tf_user->a1, VMA_READ | VMA_WRITE | VMA_EXEC | VMA_USER, pt_alloc_vma(process_list[proc_running].uvmas));
+	// TODO!!!
+	uintptr_t vpn = get_free_vpn(proc_running);
+	struct vma * temp = pt_alloc_vma(process_list[proc_running].uvmas);
+	if(temp == 0) return NULL;
+	pt_vma_new(tf_user->satp, get_free_vpn(proc_running), tf_user->a1, VMA_READ | VMA_WRITE | VMA_EXEC | VMA_USER, temp);
+	tf_user->a3 = vpn2virt(vpn);
+	printstr("SCALL_MMAP");
 }
 
 // Handler for SCALL_TIMERSTATUS
