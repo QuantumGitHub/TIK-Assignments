@@ -69,6 +69,7 @@ inline void scall_handler_print()
 {
 	// TODO
 	put(tf_user->a1);
+	//printstr("SCALL_PRINT");
 }
 
 // Handler for SCALL_END
@@ -134,6 +135,7 @@ void scall_handler_yield()
 		proc_copy_frame(&process_list[proc_running].tf, tf_user);
 		proc_scheduler();
 	}
+	//printstr("SCALL_YIELD");
 }
 
 /* TODO
@@ -145,6 +147,7 @@ void scall_handler_getpid()
 {
 	// TODO
 	tf_user->a3 = process_list[proc_running].pid;
+	//printstr("SCALL_PID");
 }
 
 /* get_free_vpn
@@ -189,10 +192,13 @@ void scall_handler_mmap()
 	// TODO!!!
 	uintptr_t vpn = get_free_vpn(proc_running);
 	struct vma * temp = pt_alloc_vma(process_list[proc_running].uvmas);
-	if(temp == 0) return NULL;
-	pt_vma_new(tf_user->satp, get_free_vpn(proc_running), tf_user->a1, VMA_READ | VMA_WRITE | VMA_EXEC | VMA_USER, temp);
+	if(temp == 0){
+		tf_user->a3 = NULL; 
+		return;
+	}
+	pt_vma_new(&process_list[proc_running].satp, vpn, tf_user->a1, VMA_READ | VMA_WRITE | VMA_EXEC | VMA_USER, temp);
 	tf_user->a3 = vpn2virt(vpn);
-	printstr("SCALL_MMAP");
+	//printstr("SCALL_MMAP");
 }
 
 // Handler for SCALL_TIMERSTATUS
@@ -212,6 +218,7 @@ void scall_handler()
 	tf_user->a3 = -1;
 	switch (tf_user->a0) {
 	case SCALL_PRINT:
+		//printstr("Scall print");
 		scall_handler_print(); // TODO: complete this function
 		break;
 	case SCALL_END:
@@ -221,12 +228,15 @@ void scall_handler()
 		scall_handler_execv();
 		break;
 	case SCALL_YIELD:
+		//printstr("Scall yield");
 		scall_handler_yield(); // TODO: complete this function
 		break;
 	case SCALL_GETPID:
+		//printstr("Scall pid");
 		scall_handler_getpid(); // TODO: complete this function
 		break;
 	case SCALL_MMAP:
+		//printstr("Scall mmap");
 		scall_handler_mmap(); // TODO: complete this function
 		break;
 	case SCALL_TIMERSTATUS:
@@ -367,7 +377,8 @@ static int handle_text_demand(uintptr_t stval)
 	// "kernel" virtual address. Use get_kvirt() to obtain the kernel virtual address, starting from a user virtual address. After that, use proc_copy_binary().
 
 	// TODO
-	return proc_copy_binary(get_kvirt(process_list[proc_running].satp, stval), process_list[proc_running].elf.ptr_elf, (stval - process_list[proc_running].elf.elf.virtual_load)/PAGE_SIZE);
+	//printstr("handle_text_dem");
+	return proc_copy_binary(get_kvirt(&process_list[proc_running].satp, stval), &process_list[proc_running].elf, (stval - process_list[proc_running].elf.elf.virtual_load)/PAGE_SIZE);
 }
 
 /* mcall

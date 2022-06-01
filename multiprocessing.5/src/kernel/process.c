@@ -57,7 +57,7 @@ int proc_run_process(char *ptr_elf, uint64_t a3)
 	asm volatile("mv t0, %0\n\t"
 		     "csrw sepc, t0\n\t" ::"r"(elf.elf.e_entry)
 		     : "t0");
-
+	//printstr("proc_run_process");
 	// Before running the application we set the CPU registers to 0
 	// SP becomes the last address of vpn_stack (i.e. the top)
 	asm volatile("mv a3, %[a3]\n\t"
@@ -219,7 +219,14 @@ inline void proc_scheduler(void)
 	*/
 
 	// TODO
-	for(int p = 0; p++; p < MAX_PROCESSES){
+	for(int p = proc_running+1; p < MAX_PROCESSES; p++){
+		if(process_list[p].status == PROCESS_PAUSED){
+			proc_running = p; // index of running process = proc_running
+			p = MAX_PROCESSES;
+		}
+	}
+
+	for(int p = 0; p < proc_running; p++){
 		if(process_list[p].status == PROCESS_PAUSED){
 			proc_running = p; // index of running process = proc_running
 			p = MAX_PROCESSES;
@@ -227,6 +234,7 @@ inline void proc_scheduler(void)
 	}
 
 	process_list[proc_running].status = PROCESS_RUNNING;
+	//("proc_scheduler");
 	context_switch();
 }
 
@@ -346,12 +354,12 @@ inline char *proc_create_process_vmas(int t, struct elf_jake *elf)
 	* After the VMAs are allocated, you can create one for the text and one for the stack, by using pt_vma_new(). 
 	* Be warry of the flags that you should pass!
 	*/
-	int MINIMUM_REQUIRED_PAGES = elf->elf.size_load/PAGE_SIZE;
-	if(!(elf->elf.size_load%PAGE_SIZE)) MINIMUM_REQUIRED_PAGES++;
+	int MIN_REQ_PAGES = elf->elf.size_load/PAGE_SIZE;
+	if((elf->elf.size_load%PAGE_SIZE)) MIN_REQ_PAGES++;
 	// TODO
 	uintptr_t flags = VMA_READ | VMA_WRITE | VMA_EXEC | VMA_USER;
 	//text vma
-	pt_vma_new(&process_list[t].satp, vpn_text, MINIMUM_REQUIRED_PAGES, flags, text_vma);
+	pt_vma_new(&process_list[t].satp, vpn_text, MIN_REQ_PAGES, flags, text_vma);
 	//stack vma
 	pt_vma_new(&process_list[t].satp, vpn_stack, STACK_PAGES, flags, stack_vma);
 
@@ -359,6 +367,7 @@ inline char *proc_create_process_vmas(int t, struct elf_jake *elf)
 
 	csrw(satp, process_list[t].satp);
 	pt_flush_tlb();
+	//printstr("proc_create_process_vmas");
 	return (char *)vpn2virt(vpn_stack);
 }
 
@@ -370,6 +379,7 @@ static inline int proc_find_free_process_slot()
 {
 	// TODO: Write in a simple way a loop that finds the first next process to run (max. 10 lines)
 	// TODO
+	//printstr("proc_find_free_process_slot");
 	for (int t = 0; t < MAX_PROCESSES; t++) {
 		if(process_list[t].status == PROCESS_FREE_SLOT) return t;
 	}
@@ -417,7 +427,8 @@ inline int proc_copy_binary(char *virt_text, struct elf_jake *elf,
 	// Use memcpy() to copy data. There might be a case where less than a page should be copied.
 	// TODO
 
-	memcpy(virt_text, elf->ptr_elf+elf->elf.offset_load+page_index, 1);
+	memcpy(virt_text, elf->ptr_elf+elf->elf.offset_load+page_index*PAGE_SIZE, PAGE_SIZE);
+	//printstr("proc_copy_binary");
 	return 0;
 }
 
